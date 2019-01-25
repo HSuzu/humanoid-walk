@@ -1,0 +1,7 @@
+*.pro.user
+Makefile
+bin/
+tmp/
+build*/
+*.o
+*.csv
