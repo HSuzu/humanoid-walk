@@ -30,7 +30,10 @@ RCC_DIR = tmp/rc
 LIBS += -lm \
         -L. \
         -lga \
-        -lpthread
+        -lpthread \
+        -lboost_iostreams \
+        -lboost_system \
+        -lboost_filesystem
 
 SOURCES += \
     joint.cpp \
@@ -64,4 +67,5 @@ HEADERS += \
     robot.hpp \
     shape.hpp \
     VRepClass.hpp \
-    include/utils/printcolors.hpp
+    include/utils/printcolors.hpp \
+    include/utils/gnuplot-iostream.h

@@ -19,9 +19,6 @@ Robot::Robot(int clientID, const char* name) :
     int names_count = 0;
     simxInt *shapeHandles_tmp;
     simxChar *shapeNames_tmp;
-    //  simxInt *shapeHandles;
-    //  simxGetObjects(clientID, sim_object_shape_type, &count, &shapeHandles, simx_opmode_blocking);
-    // simxGetObjects(clientID, sim_object_shape_type, &count, &shapeHandles, simx_opmode_blocking)
 
     simxGetObjectGroupData(clientID, sim_object_shape_type, 0, &handles_count, &shapeHandles_tmp, NULL, NULL, NULL, NULL, &names_count, &shapeNames_tmp, simx_opmode_blocking);
 
@@ -49,6 +46,8 @@ Robot::Robot(int clientID, const char* name) :
         _shapes.push_back( Shape( clientID, shapeNames.at(i).toStdString().data(), shapeHandles[i]) );
         std::cerr << PrintColors::BOLDGREEN << "[ OK ] " << PrintColors::RESET << "Loaded shape " << shapeNames.at(i).toStdString() << "..\n";
     }
+
+    delete[] shapeHandles;
 
     _nao = new NAO(clientID);
     _nao->getNAOJoints(_joints);
