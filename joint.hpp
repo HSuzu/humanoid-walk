@@ -34,6 +34,8 @@ public:
     void update();
     void reset();
 
+    float jointRealPosition();
+
     float _currentAngle;
 };
 

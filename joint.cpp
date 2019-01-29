@@ -72,3 +72,11 @@ void Joint::setJointTargetPosition(float targetAngle) {
     }
 #endif
 }
+
+
+float Joint::jointRealPosition() {
+    float position;
+    simxGetJointPosition(_clientID, _handle, &position, simx_opmode_blocking);
+
+    return position;
+}

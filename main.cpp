@@ -63,8 +63,8 @@ int main(int argc, const char** argv) {
     // params.set(gaNselectScores, (int)GAStatistics::AllScores);
 
     GASteadyStateGA ga1(genome);
-    ga1.populationSize(150);
-    ga1.nGenerations(20);
+    ga1.populationSize(200);
+    ga1.nGenerations(200);
     // ga1.scoreFilename("bog.dat");
     // ga1.scoreFrequency(1);
     // ga1.flushFrequency(1);
@@ -93,8 +93,17 @@ float Objective(GAGenome& g) {
         csv << std::setprecision(3) << params[i] << ", ";
     }
 
+    std::cout << PrintColors::BOLDBLUE << "Genome " << genome_number << "\n"
+              << PrintColors::RESET << "Params: ";
+
+    for(auto p : params) {
+        std::cout << p << " ";
+    }
+
+    std::cout << "\n\n";
+
     float avgScore = 0.0;
-    for(int i=0; i< 3; i++) {
+    for(int i=0; i< 1; i++) {
         std::string label = std::to_string(genome_number) + "_" + std::to_string(i);
         result res = r->runExperiment(params, 15.0, label);
         std::cout << PrintColors::GREEN << "Score: " << std::setprecision(2) <<  res.score << PrintColors::RESET << std::endl;
@@ -105,7 +114,7 @@ float Objective(GAGenome& g) {
         csv << std::setprecision(2) << res.dy << ", ";
         csv << std::setprecision(2) << res.score << ", ";
     }
-    avgScore = avgScore/3.0f;
+//    avgScore = avgScore/3.0f;
     csv << std::setprecision(2) << avgScore << std::endl;
     std::cout << PrintColors::BOLDGREEN << "\nAvg Score: " << std::setprecision(2) << avgScore << PrintColors::RESET << std::endl;
     return avgScore;
