@@ -10,8 +10,14 @@ Joint::Joint(int clientID, const char *jointName) :
     _currentAngle(0.0),
     _neutralAngle(0.0)
 {
-    simxGetJointPosition(_clientID, _handle, &_initAngle, simx_opmode_blocking);
+    simxGetJointPosition(_clientID, _handle, &_initAngle, simx_opmode_streaming);
+    while(simxGetJointPosition(_clientID, _handle, &_initAngle,simx_opmode_buffer)!=simx_return_ok);
+
     std::cout << "[ " << jointName << " ] Initial joint angle: " << _initAngle << std::endl;
+}
+
+Joint::~Joint() {
+    simxGetJointPosition(_clientID, _handle, &_initAngle, simx_opmode_discontinue);
 }
 
 void Joint::setJointStats(float posAmp, float negAmp, float neutralAngle, float phase, float T_ms) {
@@ -31,22 +37,22 @@ void Joint::setJointStats(float posAmp, float negAmp, float neutralAngle, float 
 
 void Joint::update() {
     if (!_enabled) return;
-//    float amplitude = (0 < _t && _t < 0.5) || (-1 < _t && _t < -0.5) ? _posAmp : _negAmp;
-    float amplitude = _t < 0.5f ? _posAmp : _negAmp;
-    float newAngle = _neutralAngle + _amplFactor * amplitude * sin(2 * PI * _t + _initPhase);
+    float amplitude = (0 < _t && _t < 0.5) || (-1 < _t && _t < -0.5) ? _posAmp : _negAmp;
+    float newAngle = _neutralAngle + _amplFactor * amplitude * sin(2 * PI * _t);
     _t += _tDelta;
 
-    if (_t >= 1.0f) {
+    if (_t >= 1.0) {
         _t = 0;
-        if (_amplFactor < 1.0f) _amplFactor += 0.25f;
+        if (_amplFactor < 1.0) _amplFactor += 0.25;
     }
 
+    simxGetJointPosition(_clientID, _handle, &_realJointPosition, simx_opmode_buffer);
+    std::cout << _name.toStdString() << " current position: " << _realJointPosition << "; desired position: " << newAngle << "\n";
     this->setJointTargetPosition(newAngle);
 }
 
 void Joint::reset() {
-//    _t = _initPhase;
-    _t = 0.0f;
+    _t = _initPhase;
     _amplFactor = 0.0;
     this->setJointTargetPosition(_initAngle);
 }

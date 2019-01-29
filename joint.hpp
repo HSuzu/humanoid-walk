@@ -23,11 +23,13 @@ private:
   float _tDelta;
   float _initPhase;
   float _amplFactor = 0;
-  float _velFactor = 0;
   simxFloat _initAngle;
+
+  float _realJointPosition;
 public:
   void setJointTargetPosition(float targetAngle);
   Joint(int clientID, const char *jointName);
+  ~Joint();
   void setJointStats(float posAmp, float negAmp, float neutralAngle, float phase, float T_ms);
   void update();
   void reset();

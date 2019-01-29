@@ -24,7 +24,7 @@ int main(int argc, const char** argv) {
     unsigned seed = 100;
 
     const char *address = ((argc >= 2) ? argv[1] : "127.0.0.1");
-    const int portNumber = ((argc >= 3) ? atoi(argv[2]) : 19997);
+    const int portNumber = ((argc >= 3) ? atoi(argv[2]) : 20000);
 
     int clientID = simxStart(address, portNumber, true, true, 2000, 5);
     //  simxStartSimulation(clientID, simx_opmode_blocking);

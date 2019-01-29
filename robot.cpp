@@ -193,11 +193,9 @@ result Robot::runExperiment( const std::vector<float> &genome, const float time_
 
     dx = position[0] - _initialPosition[0];
     dy = position[1] - _initialPosition[1];
-//    float dist = sqrt(pow(dx, 2) + pow(dy, 2));
     float time = ncycles*step_ms/1000.0f;
     float avgvel = dist/time;
-//    float score = 1.0f + 15.0f*ncycles/600 + 10.0f*dist + 20.0f*fmax(dx, 0.0f);
-    float score = 1.0f + 10.0f*avgvel + 10.0f*dist + 20.0f*fmax(dx, 0.0f);
+    float score = 1.0f + 15.0f*ncycles/600 + 10.0f*dist + 20.0f*fmax(dx, 0.0f);
     struct result r = {score, dx, dy, time};
 
     std::cout << "\n[ End Experiment ] " << label << "\n";
