@@ -25,9 +25,10 @@ void Joint::setJointStats(float posAmp, float negAmp, float neutralAngle, float 
     _negAmp = negAmp;
     _initPhase = phase;
     _neutralAngle = neutralAngle;
-    _tDelta = step_ms/T_ms;
+    _period = T_ms;
+
 #ifdef DEBUG
-    std::cout << "[ " << _name << " ] " <<std::endl;
+    std::cout << "[ " << _name.toStdString() << " ] " <<std::endl;
     std::cout << "PosAmp: " << std::setprecision(2) << _posAmp << ", ";
     std::cout << "NegAmp: " << std::setprecision(2) <<  _negAmp << ", ";
     std::cout << "NeutralAngle: " << std::setprecision(2) << _neutralAngle << ", ";
@@ -37,24 +38,32 @@ void Joint::setJointStats(float posAmp, float negAmp, float neutralAngle, float 
 
 void Joint::update() {
     if (!_enabled) return;
-    float amplitude = (0 < _t && _t < 0.5) || (-1 < _t && _t < -0.5) ? _posAmp : _negAmp;
-    float newAngle = _neutralAngle + _amplFactor * amplitude * sin(2 * PI * _t);
-    _t += _tDelta;
+    // Relative position of the moviment if we were in a senoidal function of period 1s
+    float senPos = _t/_period + _initPhase/2*PI;
+    senPos = senPos - (int)senPos;
 
-    if (_t >= 1.0) {
-        _t = 0;
-        if (_amplFactor < 1.0) _amplFactor += 0.25;
+    float amplitude = senPos < 0.5f ? _posAmp : _negAmp;
+    float w = 2 * PI/_period;
+    float newAngle = _neutralAngle + amplitude * std::sin(_velFactor*w* _t + _initPhase);
+    _t += step_ms;
+
+    if (_velFactor < 0.99f) {
+        _velFactor = 1-std::exp(-(_t/_dampingFactor));
+
+        if(_velFactor >= 0.99f) {
+            _velFactor = 1.0f;
+        }
     }
 
-    simxGetJointPosition(_clientID, _handle, &_realJointPosition, simx_opmode_buffer);
-    std::cout << _name.toStdString() << " current position: " << _realJointPosition << "; desired position: " << newAngle << "\n";
-    this->setJointTargetPosition(newAngle);
+    if(newAngle == newAngle) {
+        this->setJointTargetPosition(newAngle);
+    }
 }
 
 void Joint::reset() {
-    _t = _initPhase;
-    _amplFactor = 0.0;
-    this->setJointTargetPosition(_initAngle);
+    _t = 0.0f;
+    _velFactor = 0.0f;
+    this->setJointTargetPosition(_neutralAngle);
 }
 
 void Joint::setJointTargetPosition(float targetAngle) {
@@ -68,4 +77,11 @@ void Joint::setJointTargetPosition(float targetAngle) {
         log_response(ret);
     }
 #endif
+}
+
+
+float Joint::jointRealPosition() {
+    simxGetJointPosition(_clientID, _handle, &_realJointPosition, simx_opmode_buffer);
+
+    return _realJointPosition;
 }
