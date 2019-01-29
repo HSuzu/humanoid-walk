@@ -22,10 +22,8 @@ private:
     float _neutralAngle; // The angle that the joint move around
     float _t; // Current time of simulation
     float _period; // Period of the movement (ms)
-//    float _tDelta;
     const float _dampingFactor = 300; // This control the time for the function to reach its peak (time approx DP * 3.5)
-    float _amplFactor = 0;
-//    float _velFactor = 0;
+    float _velFactor = 0;
     float _initPhase;
 
     simxFloat _initAngle;
