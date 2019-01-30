@@ -30,7 +30,10 @@ RCC_DIR = tmp/rc
 LIBS += -lm \
         -L. \
         -lga \
-        -lpthread
+        -lpthread \
+        -lboost_iostreams \
+        -lboost_system \
+        -lboost_filesystem
 
 SOURCES += \
     joint.cpp \
@@ -41,7 +44,8 @@ SOURCES += \
     shape.cpp \
     VRepClass.cpp \
     remoteApi/extApi.c \
-    remoteApi/extApiPlatform.c
+    remoteApi/extApiPlatform.c \
+    include/utils/gnuplot/gnuplot.cc
 
 HEADERS += \
     include/_dirent.h \
@@ -64,4 +68,7 @@ HEADERS += \
     robot.hpp \
     shape.hpp \
     VRepClass.hpp \
-    include/utils/printcolors.hpp
+    include/utils/printcolors.hpp \
+    include/utils/gnuplot/gnuplot-iostream.h \
+    include/utils/printcolors.hpp \
+    include/utils/gnuplot/gnuplot.hh

@@ -4,6 +4,9 @@
 #include "VRepClass.hpp"
 #include <cmath>
 
+#include <utils/gnuplot/gnuplot-iostream.h>
+#include <fstream>
+
 class JointInterface
 {
 public:
@@ -29,15 +32,26 @@ private:
     float _realJointPosition;
 
     simxFloat _initAngle;
+
+    std::ofstream _fd;
+    QString _fileName;
+    bool _saveTmpData;
+
+    int _gpidx;
+    Gnuplot *_gp;
+    int _flush_count;
 public:
     void setJointTargetPosition(float targetAngle);
-    Joint(int clientID, const char *jointName);
+    Joint(int clientID, const char *jointName, bool displayGraphs = true, bool saveTmp = true);
     ~Joint();
     void setJointStats(float posAmp, float negAmp, float neutralAngle, float phase, float T_ms);
     void update();
     void reset();
 
     float jointRealPosition();
+
+    std::ofstream &tmpDataFile();
+    QString tmpDataFileName();
 
     float _currentAngle;
 };

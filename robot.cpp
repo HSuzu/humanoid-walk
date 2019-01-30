@@ -177,7 +177,7 @@ result Robot::runExperiment( const std::vector<float> &genome, const float time_
         }
         if (position[2] > maxZ) {
             maxZ = position[2];
-        } else if (position[2] < 0.3*maxZ) {
+        } else if (position[2] < maxZ - 0.15f) {
             std::cout << PrintColors::BOLDYELLOW << "Robot Fell" << PrintColors::RESET << std::endl;
             hasRobotFallen = true;
         }

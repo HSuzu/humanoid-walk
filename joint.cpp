@@ -4,8 +4,9 @@
 #include <math.h>
 #include <iomanip>
 
+#define JOINT_FLUSH_COUNT 20
 
-Joint::Joint(int clientID, const char *jointName) :
+Joint::Joint(int clientID, const char *jointName, bool displayGraphs, bool saveTmp) :
     VRepClass(clientID, jointName),
     _currentAngle(0.0),
     _neutralAngle(0.0)
@@ -14,10 +15,47 @@ Joint::Joint(int clientID, const char *jointName) :
     while(simxGetJointPosition(_clientID, _handle, &_initAngle,simx_opmode_buffer)!=simx_return_ok);
 
     std::cout << "[ " << jointName << " ] Initial joint angle: " << _initAngle << std::endl;
+
+    _saveTmpData = saveTmp || displayGraphs;
+
+    if(_saveTmpData) {
+        _flush_count = JOINT_FLUSH_COUNT;
+
+        _fileName = QString::fromUtf8(".") + _name;
+
+        _fd.open(_fileName.toStdString(), std::ios::out);
+        _fd << "0 " << _initAngle << " 0\n";
+        _fd << "0.01 " << _initAngle << " 0\n";
+        _fd.flush();
+    }
+
+    if(displayGraphs) {
+        _gp = new Gnuplot("gnuplot");
+
+        *_gp << "set terminal qt 0 title '" << _name.toStdString() << "'\n";
+    //    _gp << "set xrange[0:15000]\n";
+    //    _gp << "set yrange[-3:3]\n";
+        *_gp << "set datafile separator whitespace\n";
+        *_gp << "while (1) {plot '" << _fileName.toStdString()
+            << "' using 1:2 with lines title 'Real " << _name.toStdString()
+            << "', '' using 1:3 with lines title 'Desired " << _name.toStdString()
+            << "'; pause 0.5;}\n";
+        _gp->flush();
+    } else {
+        _gp = nullptr;
+    }
 }
 
 Joint::~Joint() {
     simxGetJointPosition(_clientID, _handle, &_initAngle, simx_opmode_discontinue);
+
+    if(_fd.is_open()) {
+        _fd.close();
+    }
+
+    if(_gp != nullptr) {
+        delete _gp;
+    }
 }
 
 void Joint::setJointStats(float posAmp, float negAmp, float neutralAngle, float phase, float T_ms) {
@@ -47,6 +85,15 @@ void Joint::update() {
     float newAngle = _neutralAngle + amplitude * std::sin(_velFactor*w* _t + _initPhase);
     _t += step_ms;
 
+    if(_saveTmpData) {
+        _fd << _t << " " << jointRealPosition() << " " << newAngle << "\n";
+
+        if(--_flush_count == 0) {
+            _fd.flush();
+            _flush_count = JOINT_FLUSH_COUNT;
+        }
+    }
+
     if (_velFactor < 0.99f) {
         _velFactor = 1-std::exp(-(_t/_dampingFactor));
 
@@ -61,6 +108,15 @@ void Joint::update() {
 }
 
 void Joint::reset() {
+    if(_saveTmpData) {
+        _fd.close();
+
+        _fd.open(_fileName.toStdString(), std::ios::out);
+        _fd << "0 " << _initAngle << " 0\n";
+        _fd << "0.01 " << _initAngle << " 0\n";
+        _fd.flush();
+    }
+
     _t = 0.0f;
     _velFactor = 0.0f;
     this->setJointTargetPosition(_neutralAngle);
@@ -84,4 +140,12 @@ float Joint::jointRealPosition() {
     simxGetJointPosition(_clientID, _handle, &_realJointPosition, simx_opmode_buffer);
 
     return _realJointPosition;
+}
+
+std::ofstream &Joint::tmpDataFile() {
+    return _fd;
+}
+
+QString Joint::tmpDataFileName() {
+    return _fileName;
 }
