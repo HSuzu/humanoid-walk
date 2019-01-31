@@ -2,7 +2,7 @@
 
 JointPair::JointPair(int clientID,
                      const char *rightJointName,
-                     const char *leftJointName) : _gp("gnuplot") {
+                     const char *leftJointName) : _gp("gnuplot -persist") {
     _rightJoint = new Joint(clientID, rightJointName, false, true);
     _leftJoint = new Joint(clientID, leftJointName, false, true);
 
@@ -17,7 +17,7 @@ JointPair::JointPair(int clientID,
         << "' using 1:2 with lines title 'Real " << leftJointName
         << "', '' using 1:3 with lines title 'Desired " << leftJointName << "'\n";
     _gp << "unset multiplot\n";
-    _gp << "pause 0.5\n}\n";
+    _gp << "pause 0.3\n}\n";
     _gp.flush();
 
 }

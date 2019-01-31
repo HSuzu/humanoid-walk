@@ -4,7 +4,7 @@
 #include <math.h>
 #include <iomanip>
 
-#define JOINT_FLUSH_COUNT 20
+#define JOINT_FLUSH_COUNT 6
 
 Joint::Joint(int clientID, const char *jointName, bool displayGraphs, bool saveTmp) :
     VRepClass(clientID, jointName),
@@ -30,7 +30,7 @@ Joint::Joint(int clientID, const char *jointName, bool displayGraphs, bool saveT
     }
 
     if(displayGraphs) {
-        _gp = new Gnuplot("gnuplot");
+        _gp = new Gnuplot("gnuplot -persist");
 
         *_gp << "set terminal qt 0 title '" << _name.toStdString() << "'\n";
     //    _gp << "set xrange[0:15000]\n";

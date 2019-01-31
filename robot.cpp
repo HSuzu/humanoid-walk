@@ -66,16 +66,22 @@ void Robot::update() {
         joint->update();
     }
 
-    float leftAnkleAngle = -1*(_nao->_legHip->_leftJoint->_currentAngle +
-                               _nao->_knee->_leftJoint->_currentAngle);
-    float rightAnkleAngle = -1*(_nao->_legHip->_rightJoint->_currentAngle +
-                                _nao->_knee->_rightJoint->_currentAngle);
+//    float leftAnkleAngle = -1*(_nao->_legHip->_leftJoint->_currentAngle +
+//                               _nao->_knee->_leftJoint->_currentAngle);
+//    float rightAnkleAngle = -1*(_nao->_legHip->_rightJoint->_currentAngle +
+//                                _nao->_knee->_rightJoint->_currentAngle);
+    float leftAnkleAngle = -1*(_nao->_legHip->_leftJoint->jointRealPosition() +
+                               _nao->_knee->_leftJoint->jointRealPosition());
+    float rightAnkleAngle = -1*(_nao->_legHip->_rightJoint->jointRealPosition() +
+                                _nao->_knee->_rightJoint->jointRealPosition());
 
     _nao->_ankle->_leftJoint->setJointTargetPosition(leftAnkleAngle);
     _nao->_ankle->_rightJoint->setJointTargetPosition(rightAnkleAngle);
 
-    float leftAnkleRollAngle = -1*_nao->_legHipRoll->_leftJoint->_currentAngle;
-    float rightAnkleRollAngle = -1*_nao->_legHipRoll->_rightJoint->_currentAngle;
+//    float leftAnkleRollAngle = -1*_nao->_legHipRoll->_leftJoint->_currentAngle;
+//    float rightAnkleRollAngle = -1*_nao->_legHipRoll->_rightJoint->_currentAngle;
+    float leftAnkleRollAngle = -1*_nao->_legHipRoll->_leftJoint->jointRealPosition();
+    float rightAnkleRollAngle = -1*_nao->_legHipRoll->_rightJoint->jointRealPosition();
 
     _nao->_ankleRoll->_leftJoint->setJointTargetPosition(leftAnkleRollAngle);
     _nao->_ankleRoll->_rightJoint->setJointTargetPosition(rightAnkleRollAngle);
