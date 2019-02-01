@@ -21,7 +21,7 @@ Joint::Joint(int clientID, const char *jointName, bool displayGraphs, bool saveT
     if(_saveTmpData) {
         _flush_count = JOINT_FLUSH_COUNT;
 
-        _fileName = QString::fromUtf8(".") + _name;
+        _fileName = QString::fromUtf8(".__Test__") + _name;
 
         _fd.open(_fileName.toStdString(), std::ios::out);
         _fd << "0 " << _initAngle << " 0\n";
