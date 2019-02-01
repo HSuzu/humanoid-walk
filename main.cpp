@@ -1,7 +1,8 @@
 #include <iostream>
 #include <fstream>
 #include <iomanip>
-#include <string> 
+#include <string>
+#include <ctime>
 
 #include <printcolors.hpp>
 
@@ -63,8 +64,8 @@ int main(int argc, const char** argv) {
     // params.set(gaNselectScores, (int)GAStatistics::AllScores);
 
     GASteadyStateGA ga1(genome);
-    ga1.populationSize(200);
-    ga1.nGenerations(200);
+    ga1.populationSize(150);
+    ga1.nGenerations(40);
     // ga1.scoreFilename("bog.dat");
     // ga1.scoreFrequency(1);
     // ga1.flushFrequency(1);
@@ -76,6 +77,27 @@ int main(int argc, const char** argv) {
     std::cout << "************************" << std::endl;
     std::cout << "GA Statistics: " << ga1.statistics() << std::endl;
     std::cout << "GA generated:\n" << ga1.statistics().bestIndividual() << std::endl;
+
+    std::ofstream bestPopFile;
+
+    time_t rawtime;
+    struct tm * timeinfo;
+    char currTime[100];
+    time(&rawtime);
+    timeinfo = localtime(&rawtime);
+
+    strftime(currTime, sizeof(currTime), "results (%d.%m.%y_%I.%M.%S)", timeinfo);
+
+    bestPopFile.open(currTime);
+
+    const GAPopulation &bestPopulation = ga1.statistics().bestPopulation();
+
+    for(int i = 0; i < bestPopulation.size(); i++) {
+        bestPopFile << bestPopulation.individual(i, GAPopulation::SortBasis::SCALED) << "\n";
+    }
+
+    bestPopFile.flush();
+    bestPopFile.close();
 
     csv.close();
     delete r;

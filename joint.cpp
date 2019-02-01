@@ -76,9 +76,13 @@ void Joint::setJointStats(float posAmp, float negAmp, float neutralAngle, float 
 
 void Joint::update() {
     if (!_enabled) return;
+
     // Relative position of the moviment if we were in a senoidal function of period 1s
     float senPos = _t/_period + _initPhase/2*PI;
     senPos = senPos - (int)senPos;
+    if(senPos < 0) {
+        senPos = 1 + senPos;
+    }
 
     float amplitude = senPos < 0.5f ? _posAmp : _negAmp;
     float w = 2 * PI/_period;
