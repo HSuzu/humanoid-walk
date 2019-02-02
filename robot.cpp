@@ -70,21 +70,21 @@ void Robot::update() {
 //                               _nao->_knee->_leftJoint->_currentAngle);
 //    float rightAnkleAngle = -1*(_nao->_legHip->_rightJoint->_currentAngle +
 //                                _nao->_knee->_rightJoint->_currentAngle);
-    float leftAnkleAngle = -1*(_nao->_legHip->_leftJoint->jointRealPosition() +
-                               _nao->_knee->_leftJoint->jointRealPosition());
-    float rightAnkleAngle = -1*(_nao->_legHip->_rightJoint->jointRealPosition() +
-                                _nao->_knee->_rightJoint->jointRealPosition());
+//    float leftAnkleAngle = -1*(_nao->_legHip->_leftJoint->jointRealPosition() +
+//                               _nao->_knee->_leftJoint->jointRealPosition());
+//    float rightAnkleAngle = -1*(_nao->_legHip->_rightJoint->jointRealPosition() +
+//                                _nao->_knee->_rightJoint->jointRealPosition());
 
-    _nao->_ankle->_leftJoint->setJointTargetPosition(leftAnkleAngle);
-    _nao->_ankle->_rightJoint->setJointTargetPosition(rightAnkleAngle);
+//    _nao->_ankle->_leftJoint->setJointTargetPosition(leftAnkleAngle);
+//    _nao->_ankle->_rightJoint->setJointTargetPosition(rightAnkleAngle);
 
 //    float leftAnkleRollAngle = -1*_nao->_legHipRoll->_leftJoint->_currentAngle;
 //    float rightAnkleRollAngle = -1*_nao->_legHipRoll->_rightJoint->_currentAngle;
-    float leftAnkleRollAngle = -1*_nao->_legHipRoll->_leftJoint->jointRealPosition();
-    float rightAnkleRollAngle = -1*_nao->_legHipRoll->_rightJoint->jointRealPosition();
+//    float leftAnkleRollAngle = -1*_nao->_legHipRoll->_leftJoint->jointRealPosition();
+//    float rightAnkleRollAngle = -1*_nao->_legHipRoll->_rightJoint->jointRealPosition();
 
-    _nao->_ankleRoll->_leftJoint->setJointTargetPosition(leftAnkleRollAngle);
-    _nao->_ankleRoll->_rightJoint->setJointTargetPosition(rightAnkleRollAngle);
+//    _nao->_ankleRoll->_leftJoint->setJointTargetPosition(leftAnkleRollAngle);
+//    _nao->_ankleRoll->_rightJoint->setJointTargetPosition(rightAnkleRollAngle);
 
     simxPauseCommunication(_clientID, 0);
 
@@ -96,8 +96,8 @@ void Robot::reset() {
     for ( auto &j : _joints ) {
         j->reset();
     }
-    //  _nao->_ankle->reset();
-    //  _nao->_ankleRoll->reset();
+    _nao->_ankle->reset();
+    _nao->_ankleRoll->reset();
 
     simxPauseCommunication(_clientID, 0);
 
@@ -183,7 +183,7 @@ result Robot::runExperiment( const std::vector<float> &genome, const float time_
         }
         if (position[2] > maxZ) {
             maxZ = position[2];
-        } else if (position[2] < maxZ - 0.15f) {
+        } else if (position[2] < maxZ - 0.10f || position[2] < 0.15f) {
             std::cout << PrintColors::BOLDYELLOW << "Robot Fell" << PrintColors::RESET << std::endl;
             hasRobotFallen = true;
         }
@@ -224,35 +224,60 @@ std::vector< std::pair<float, float> > Robot::getAleles() {
 //    alleles.push_back( std::make_pair( 200.0, 600.0) ); // T(ms)
     alleles.push_back( std::make_pair( 200.0, 3000.0) ); // T(ms)
     if (_nao->_legHip->_enabled) {
-        alleles.push_back( std::make_pair( 0, 2.02 ) ); //A: Pos Amplitude
-        alleles.push_back( std::make_pair( 0, 2.02 ) ); //B: Neg Amplitude
+        alleles.push_back( std::make_pair( -2.02, 2.02 ) ); //A: Pos Amplitude
+        alleles.push_back( std::make_pair( -2.02, 2.02 ) ); //B: Neg Amplitude
         alleles.push_back( std::make_pair( -1.53, 0.48 ) ); //Oc : Neutral Angle
+        alleles.push_back( std::make_pair( 0.0, 2*PI ) ); //t: phase
     }
 
     if (_nao->_knee->_enabled) {
-        alleles.push_back( std::make_pair( 0.2, 3.1) ); //C: pos amp
-        alleles.push_back( std::make_pair( 0.2, 3.1) ); //C: Neg amp
+        alleles.push_back( std::make_pair( -3.1, 3.1) ); //C: pos amp
+        alleles.push_back( std::make_pair( -3.1, 3.1) ); //C: Neg amp
         alleles.push_back( std::make_pair( -0.09, 2.11) ); //Oj: neutral angle
-        alleles.push_back( std::make_pair( 0.0, PI ) ); //t: phase
+        alleles.push_back( std::make_pair( 0.0, 2*PI ) ); //t: phase
     }
 
     if (_nao->_shoulder->_enabled) {
-        alleles.push_back( std::make_pair( 0.0, 1.0) ); //D+: pos amp
-        alleles.push_back( std::make_pair( 0.0, 1.0) ); //D-: neg amp
+        alleles.push_back( std::make_pair( -4, 4) ); //D+: pos amp
+        alleles.push_back( std::make_pair( -4, 4) ); //D+: pos amp
+        alleles.push_back( std::make_pair( -2.085, 2.085) ); //D+: pos amp
+        alleles.push_back( std::make_pair( 0.0, 2*PI ) ); //t: phase
     }
 
     if (_nao->_legHipRoll->_enabled) {
-        alleles.push_back( std::make_pair( 0.0, 0.79) ); // E: Pos amp
-        alleles.push_back( std::make_pair( 0.0, 0.37) ); // E: Neg amp
+        alleles.push_back( std::make_pair( -1.2, 1.2) ); // E: Pos amp
+        alleles.push_back( std::make_pair( -1.2, 1.2) ); // E: Neg amp
+        alleles.push_back( std::make_pair( -0.37, 0.79) ); // E: Neutral ang
+        alleles.push_back( std::make_pair( 0, 2*PI) ); // E: Neutral ang
 
-        alleles.push_back( std::make_pair( 0.0, 0.37) ); // E: Neg amp
-        alleles.push_back( std::make_pair( 0.0, 0.79) ); // E: Pos amp
-        alleles.push_back( std::make_pair( 0.0, PI ) ); //t: phase
+        alleles.push_back( std::make_pair( -1.2, 1.2) ); // E: Pos amp
+        alleles.push_back( std::make_pair( -1.2, 1.2) ); // E: Neg amp
+        alleles.push_back( std::make_pair( -0.79, 0.37) ); // E: Neutral ang
+        alleles.push_back( std::make_pair( 0, 2*PI) ); // E: Neutral ang
     }
 
     if (_nao->_elbow->_enabled) {
-        alleles.push_back( std::make_pair( 0.0, 1) );
-        alleles.push_back( std::make_pair( 0.0, 1.55) );
+        alleles.push_back( std::make_pair( -1.54, -0.034) );
+        alleles.push_back( std::make_pair( -1.54, -0.034) );
+    }
+
+    if(_nao->_ankle->_enabled) {
+        alleles.push_back( std::make_pair( -2.11, 2.11) ); //D+: pos amp
+        alleles.push_back( std::make_pair( -2.11, 2.11) ); //D+: pos amp
+        alleles.push_back( std::make_pair( -1.18, 0.92) ); //D+: pos amp
+        alleles.push_back( std::make_pair( 0.0, 2*PI ) ); //t: phase
+    }
+
+    if(_nao->_ankleRoll->_enabled) {
+        alleles.push_back( std::make_pair( -1.15, 1.15) ); //D+: pos amp
+        alleles.push_back( std::make_pair( -1.15, 1.15) ); //D+: pos amp
+        alleles.push_back( std::make_pair( -0.39, 0.76) ); //D+: pos amp
+        alleles.push_back( std::make_pair( 0.0, 2*PI ) ); //t: phase
+
+        alleles.push_back( std::make_pair( -1.15, 1.15) ); //D+: pos amp
+        alleles.push_back( std::make_pair( -1.15, 1.15) ); //D+: pos amp
+        alleles.push_back( std::make_pair( -0.76, 0.39) ); //D+: pos amp
+        alleles.push_back( std::make_pair( 0.0, 2*PI ) ); //t: phase
     }
 
     return alleles;
@@ -264,8 +289,8 @@ void Robot::setGenome(const std::vector<float> &genome) {
 //    std::cout << "T(ms): " << std::setprecision(2) << T << std::endl;
 
     if (_nao->_legHip->_enabled) {
-        _nao->_legHip->setJointStats( genome[i], genome[i+1], genome[i+2], 0.0, T);
-        i+=3;
+        _nao->_legHip->setJointStats( genome[i], genome[i+1], genome[i+2], genome[i+3], T);
+        i+=4;
     }
 
     if (_nao->_knee->_enabled) {
@@ -274,20 +299,33 @@ void Robot::setGenome(const std::vector<float> &genome) {
     }
 
     if (_nao->_shoulder->_enabled) {
-        _nao->_shoulder->setJointStats( genome[i], genome[i+1], 1.57, 0.0, T);
-        i+=2;
+        _nao->_shoulder->setJointStats( genome[i], genome[i+1], genome[i+2], genome[i+3], T);
+        i+=4;
     }
 
     if (_nao->_legHipRoll->_enabled) {
-        _nao ->_legHipRoll->_leftJoint->setJointStats( genome[i], genome[i+1], 0.0, 0.0, T);
-        _nao ->_legHipRoll->_rightJoint->setJointStats( genome[i+2], genome[i+3], 0.0, genome[i+4], T);
-        i+=5;
+        _nao ->_legHipRoll->_leftJoint->setJointStats( genome[i], genome[i+1], genome[i+2], genome[i+3], T);
+        i+=4;
+        _nao ->_legHipRoll->_rightJoint->setJointStats( genome[i], genome[i+1], genome[i+2], genome[i+3], T);
+        i+=4;
     }
 
     if (_nao->_elbow->_enabled) {
-        _nao->_elbow->_leftJoint->setJointStats( -1*genome[i], -1*genome[i+1], 0.0, 0.0, T);
-        _nao->_elbow->_rightJoint->setJointStats( genome[i], genome[i+1], 0.0, PI, T);
+        _nao->_elbow->_leftJoint->setJointStats( genome[i], genome[i+1], 0.0, 0.0, T);
+        _nao->_elbow->_rightJoint->setJointStats( -1*genome[i+1], -1*genome[i], 0.0, PI, T);
         i+=2;
+    }
+
+    if (_nao->_ankle->_enabled) {
+        _nao->_ankle->setJointStats( genome[i], genome[i+1], genome[i+2], genome[i+3], T);
+        i+=4;
+    }
+
+    if (_nao->_ankleRoll->_enabled) {
+        _nao->_ankleRoll->_leftJoint->setJointStats( genome[i], genome[i+1], genome[i+2], genome[i+3], T);
+        i+=4;
+        _nao->_ankleRoll->_rightJoint->setJointStats( genome[i], genome[i+1], genome[i+2], genome[i+3], T);
+        i+=4;
     }
 }
 

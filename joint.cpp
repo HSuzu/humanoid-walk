@@ -78,7 +78,7 @@ void Joint::update() {
     if (!_enabled) return;
 
     // Relative position of the moviment if we were in a senoidal function of period 1s
-    float senPos = _t/_period + _initPhase/2*PI;
+    float senPos = _velFactor*_t/_period + _initPhase/(2*PI);
     senPos = senPos - (int)senPos;
     if(senPos < 0) {
         senPos = 1 + senPos;
@@ -108,6 +108,8 @@ void Joint::update() {
 
     if(newAngle == newAngle) {
         this->setJointTargetPosition(newAngle);
+    } else {
+        std::cout << "[" << _name.toStdString() << "] Invalid new angle: " << newAngle << "\n";
     }
 }
 
