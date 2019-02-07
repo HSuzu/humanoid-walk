@@ -59,3 +59,7 @@ std::ostream& operator<< (std::ostream& stream, const Shape& shape) {
               shape._initialPosition[1] << ", " << shape._initialPosition[2] << "]" << std::endl;
     return stream;
 }
+
+void Shape::positionBlocking(simxFloat position[3]) {
+    simxGetObjectPosition(_clientID, _handle, sim_handle_parent, position, simx_opmode_blocking);
+}

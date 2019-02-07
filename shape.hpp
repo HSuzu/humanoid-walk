@@ -13,6 +13,8 @@ public:
   Shape(int clientID, const char* name, simxInt handle);
   Shape(int clientID, simxInt handle);
   friend std::ostream& operator<< (std::ostream& stream, const Shape& shape);
+
+  void positionBlocking(simxFloat position[3]);
   void reset();
 };
 

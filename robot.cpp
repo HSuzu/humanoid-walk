@@ -47,6 +47,7 @@ Robot::Robot(int clientID, const char* name) :
 
     for (int i = 0; i < handles_count; i++) {
         _shapes.push_back( Shape( clientID, shapeNames.at(i).toStdString().data(), shapeHandles[i]) );
+        _shapeNameHandler.insert(shapeNames.at(i), QPair<int, int>(shapeHandles[i], i));
         std::cerr << PrintColors::BOLDGREEN << "[ OK ] " << PrintColors::RESET << "Loaded shape " << shapeNames.at(i).toStdString() << "..\n";
     }
 
@@ -54,11 +55,44 @@ Robot::Robot(int clientID, const char* name) :
     _nao->getNAOJoints(_joints);
     _numJoints = _joints.size();
 
-    simxGetObjectPosition(_clientID, _handle, -1, _initialPosition, simx_opmode_blocking);
+    simxGetObjectPosition(_clientID, _handle, -1, _initialPosition, simx_opmode_streaming);
+    while(simxGetObjectPosition(_clientID, _handle, -1, _initialPosition, simx_opmode_buffer) != simx_return_ok);
+
     simxGetObjectOrientation(_clientID, _handle, -1, _initialOrientation, simx_opmode_blocking);
 
     simxSynchronous(clientID, true);
+
+    getLHipPos(_lHipPos, simx_opmode_streaming);
+    getRLShoulderPos(_RLShoulderPos, simx_opmode_streaming);
+
+    while(getLHipPos(_lHipPos, simx_opmode_buffer) != simx_return_ok);
+    while(getRLShoulderPos(_RLShoulderPos, simx_opmode_buffer) != simx_return_ok);
+
+    std::cout << "BodyLHip: " << _lHipPos[0] << " " << _lHipPos[1] << " " << _lHipPos[2] << "\n";
+    std::cout << "RLShoulder: " << _RLShoulderPos[0] << " " << _RLShoulderPos[1] << " " << _RLShoulderPos[2] << "\n";
 }
+
+Robot::~Robot() {
+    getLHipPos(_lHipPos, simx_opmode_discontinue);
+    getRLShoulderPos(_RLShoulderPos, simx_opmode_discontinue);
+    simxGetObjectPosition(_clientID, _handle, -1, _initialPosition, simx_opmode_discontinue);
+}
+
+simxInt Robot::getLHipPos(float *position, simxInt opMode) {
+    return simxGetObjectPosition(_clientID,
+                                 _shapeNameHandler.value("l_hip_roll_link_respondable3").first,
+                                 -1,
+                                 position,
+                                 opMode);
+}
+simxInt Robot::getRLShoulderPos(float *position, simxInt opMode) {
+    return simxGetObjectPosition(_clientID,
+                                 _shapeNameHandler.value("l_shoulder_pitch_respondable3").first,
+                                 _shapeNameHandler.value("r_shoulder_pitch_respondable3").first,
+                                 position,
+                                 opMode);
+}
+
 
 void Robot::update() {
     simxPauseCommunication(_clientID, 1);
@@ -146,21 +180,33 @@ result Robot::runExperiment( const std::vector<float> &genome, const float time_
     this->setGenome(genome);
     this->reset();
 
-    simxFloat position[3] = {0.0, 0.0, 0.0};
-    simxGetObjectPosition(_clientID, _handle, -1, position, simx_opmode_streaming);
+    simxFloat position[3];
+    simxFloat oldPosition[3];
 
-    simxFloat oldPosition[3] = {position[0], position[1], position[2]};
+    QList<simxFloat> maxDispBodyLHip;
+    QList<simxFloat> maxDispRLShoulder;
+    simxFloat tmpMaxDispBodyLHip[3];
+    simxFloat tmpMaxDispRLShoulder[3];
 
-    simxFloat maxZ = 0.0;
+    for(int i = 0; i < 3; i++) {
+       position[i] = _initialPosition[i];
+       oldPosition[i] = position[i];
+    }
 
-    float dx, dy, dist = 0;
+    maxDispBodyLHip.push_back(0);
+    maxDispRLShoulder.push_back(0);
+
+    simxFloat maxZ =_initialPosition[2];
+    std::cout << "maxZ: " << maxZ << "\n";
+
+    float dx, dy, dist = 0, intgr = 0;
 
     bool hasRobotFallen = false;
     float num_ticks = time_s*1000/step_ms;
     int ncycles;
     for(ncycles = 0; ncycles < num_ticks && !hasRobotFallen; ncycles++) {
         this->update();
-        simxGetObjectPosition(_clientID, _handle, -1, position, simx_opmode_streaming);
+        simxGetObjectPosition(_clientID, _handle, -1, position, simx_opmode_buffer);
 
         dx = position[0] - oldPosition[0];
         dy = position[1] - oldPosition[1];
@@ -174,6 +220,8 @@ result Robot::runExperiment( const std::vector<float> &genome, const float time_
             dist += dist_tmp;
         }
 
+        intgr += std::abs(position[1] - _initialPosition[1])*dx;
+
         routefile << std::setprecision(3) << position[0] << ", " << position[1] << ", " << position[2] << std::endl;
 
         if (ncycles%300==0){
@@ -181,13 +229,35 @@ result Robot::runExperiment( const std::vector<float> &genome, const float time_
             std::cout << "\t x: " << position[0] - _initialPosition[0] << std::endl;
             std::cout << "\t y: " << position[1] - _initialPosition[0] << std::endl;
         }
+
         if (position[2] > maxZ) {
             maxZ = position[2];
-        } else if (position[2] < maxZ - 0.10f || position[2] < 0.15f) {
+        } else if (position[2] < maxZ - 0.05f) {
             std::cout << PrintColors::BOLDYELLOW << "Robot Fell" << PrintColors::RESET << std::endl;
             hasRobotFallen = true;
         }
+
+        getLHipPos(tmpMaxDispBodyLHip, simx_opmode_buffer);
+        getRLShoulderPos(tmpMaxDispRLShoulder, simx_opmode_buffer);
+
+        float tmpDispBodyLHip = Utils::distanceXY(tmpMaxDispBodyLHip, _initialPosition);
+        float tmpDispRLShoulder = Utils::vsizeXZ(tmpMaxDispRLShoulder);
+
+//        if(tmpDispBodyLHip > maxDispBodyLHip.last()) {
+            maxDispBodyLHip.push_back(tmpDispBodyLHip);
+            if(maxDispBodyLHip.size() > 30) {
+                maxDispBodyLHip.removeFirst();
+            }
+//        }
+
+//        if(tmpDispRLShoulder > maxDispRLShoulder.last()) {
+            maxDispRLShoulder.push_back(tmpDispRLShoulder);
+            if(maxDispRLShoulder.size() > 30) {
+                maxDispRLShoulder.removeFirst();
+            }
+//        }
     }
+
     routefile.close();
 
     for (int j = 0; j < 5; j++) {
@@ -198,11 +268,36 @@ result Robot::runExperiment( const std::vector<float> &genome, const float time_
         dist = 0;
     }
 
+    float dispBodyLHip = maxDispBodyLHip.first();
+    float dispRLShoulder = maxDispRLShoulder.first();
+
+    if(dispBodyLHip == 0) {
+        if(maxDispBodyLHip.size() >= 30) {
+            dispBodyLHip = maxDispBodyLHip.at(1);
+        } else if(ncycles < 200) {
+            dispBodyLHip = 100.0f; // infinity;
+        }
+    }
+
+    if(dispRLShoulder == 0) {
+        if(maxDispRLShoulder.size() >= 30) {
+            dispRLShoulder = maxDispRLShoulder.at(1);
+        } else if(ncycles < 200) {
+            dispRLShoulder = 100.0f; // infinity;
+        }
+    }
+
+    std::cout << "fdds : " << maxDispRLShoulder.size() << ", " << maxDispBodyLHip.size()  << "\n";
+    std::cout << "fdds : " << maxDispRLShoulder.first() << ", " << maxDispBodyLHip.first()  << "\n";
+    std::cout << "fdds : " << maxDispRLShoulder.last() << ", " << maxDispBodyLHip.last()  << "\n";
+
     dx = position[0] - _initialPosition[0];
     dy = position[1] - _initialPosition[1];
     float time = ncycles*step_ms/1000.0f;
     float avgvel = dist/time;
-    float score = 50.0f*fmax(dx, 0.0f) + 15.0f*time + 5.0f*dist;
+
+    float fdx = fmax(dx, 0.0f);
+    float score = 50*fdx + (1-std::exp(-fdx/3))*(15*time + 50*std::exp(-dispBodyLHip/0.05) + 50*std::exp(-dispRLShoulder/0.05));
     struct result r = {score, dx, dy, time};
 
     std::cout << "\n[ End Experiment ] " << label << "\n";
@@ -213,6 +308,9 @@ result Robot::runExperiment( const std::vector<float> &genome, const float time_
               << "\n\tdy:" << dy
               << "\n\ttime:" << time
               << "\n\tavg velocity: " << avgvel
+              << "\n\tIntegrative/dx: " << intgr/dx
+              << "\n\tDispBodyLHip: " << std::setprecision(10) << dispBodyLHip
+              << "\n\tDispRLShoulder: " << dispRLShoulder
               << "\n";
 
     return r;

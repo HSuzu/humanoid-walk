@@ -1,8 +1,11 @@
+    #ifndef TEST_DEPLOY
+
 #include <iostream>
 #include <fstream>
 #include <iomanip>
 #include <string>
 #include <ctime>
+#include <QString>
 
 #include <printcolors.hpp>
 
@@ -22,7 +25,7 @@ Robot* r = 0;
 float Objective(GAGenome &);
 
 int main(int argc, const char** argv) {
-    unsigned seed = 100;
+    unsigned seed = time(NULL);
 
     const char *address = ((argc >= 2) ? argv[1] : "127.0.0.1");
     const int portNumber = ((argc >= 3) ? atoi(argv[2]) : 19997);
@@ -35,7 +38,15 @@ int main(int argc, const char** argv) {
         return -1;
     }
 
-    csv.open("ga.csv");
+    time_t rawtime;
+    struct tm * timeinfo;
+    char currTime[100];
+    time(&rawtime);
+    timeinfo = localtime(&rawtime);
+
+    strftime(currTime, sizeof(currTime), "(%d.%m.%y_%I.%M.%S)", timeinfo);
+
+    csv.open((QString::fromUtf8("ga%1.csv").arg(currTime)).toStdString());
     if(csv.fail()) {
         std::cout << "[ ERROR ] Fail to open log file ga.csv (Errno " << std::ios_base::failbit << ") Error: " << strerror(errno) << "\n";
     }
@@ -64,14 +75,14 @@ int main(int argc, const char** argv) {
     // params.set(gaNselectScores, (int)GAStatistics::AllScores);
 
     GASteadyStateGA ga1(genome);
-    ga1.populationSize(150);
-    ga1.nGenerations(40);
+    ga1.populationSize(100);
+    ga1.nGenerations(150);
     // ga1.scoreFilename("bog.dat");
     // ga1.scoreFrequency(1);
     // ga1.flushFrequency(1);
     // ga1.selectScores((int)GAStatistics::AllScores);
     ga1.pReplacement(0.8);
-    ga1.pMutation(0.05);
+    ga1.pMutation(0.1);
     ga1.evolve(seed);
 
     std::cout << "************************" << std::endl;
@@ -80,17 +91,12 @@ int main(int argc, const char** argv) {
 
     std::ofstream bestPopFile;
 
-    time_t rawtime;
-    struct tm * timeinfo;
-    char currTime[100];
-    time(&rawtime);
-    timeinfo = localtime(&rawtime);
 
-    strftime(currTime, sizeof(currTime), "results (%d.%m.%y_%I.%M.%S)", timeinfo);
+    bestPopFile.open((QString::fromUtf8("results ") + currTime).toStdString());
 
-    bestPopFile.open(currTime);
+    bestPopFile << "Seed: " << seed << "\n";
 
-    const GAPopulation &bestPopulation = ga1.statistics().bestPopulation();
+    const GAPopulation &bestPopulation = ga1.population();
 
     for(int i = 0; i < bestPopulation.size(); i++) {
         bestPopFile << bestPopulation.individual(i, GAPopulation::SortBasis::SCALED) << "\n";
@@ -141,3 +147,5 @@ float Objective(GAGenome& g) {
     std::cout << PrintColors::BOLDGREEN << "\nAvg Score: " << std::setprecision(2) << avgScore << PrintColors::RESET << std::endl;
     return avgScore;
 }
+
+#endif

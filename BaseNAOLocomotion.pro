@@ -10,7 +10,8 @@ CONFIG += c++11
 
 DEFINES += NON_MATLAB_PARSING \
            MAX_EXT_API_CONNECTIONS=255 \
-           _GLIBCXX_USE_CXX11_ABI=0
+           _GLIBCXX_USE_CXX11_ABI=0 \
+#           TEST_DEPLOY
 
 QMAKE_CFLAGS += -m64 -g
 
@@ -45,7 +46,10 @@ SOURCES += \
     VRepClass.cpp \
     remoteApi/extApi.c \
     remoteApi/extApiPlatform.c \
-    include/utils/gnuplot/gnuplot.cc
+    include/utils/gnuplot/gnuplot.cc \
+    test.cc \
+    include/utils/utils.cc \
+    include/utils/vrep/vrepwrapper.cc
 
 HEADERS += \
     include/_dirent.h \
@@ -71,4 +75,6 @@ HEADERS += \
     include/utils/printcolors.hpp \
     include/utils/gnuplot/gnuplot-iostream.h \
     include/utils/printcolors.hpp \
-    include/utils/gnuplot/gnuplot.hh
+    include/utils/gnuplot/gnuplot.hh \
+    include/utils/utils.hh \
+    include/utils/vrep/vrepwrapper.hh
