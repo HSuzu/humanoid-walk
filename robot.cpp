@@ -13,15 +13,11 @@
 #include "NAO.hpp"
 
 
-Robot::Robot(int clientID, const char* name) :
-    VRepClass(clientID, name) {
+Robot::Robot(int clientID, const char* name) : VRepClass(clientID, name) {
     int handles_count = 0;
     int names_count = 0;
     simxInt *shapeHandles_tmp;
     simxChar *shapeNames_tmp;
-    //  simxInt *shapeHandles;
-    //  simxGetObjects(clientID, sim_object_shape_type, &count, &shapeHandles, simx_opmode_blocking);
-    // simxGetObjects(clientID, sim_object_shape_type, &count, &shapeHandles, simx_opmode_blocking)
 
     simxGetObjectGroupData(clientID, sim_object_shape_type, 0, &handles_count, &shapeHandles_tmp, NULL, NULL, NULL, NULL, &names_count, &shapeNames_tmp, simx_opmode_blocking);
 
@@ -46,7 +42,7 @@ Robot::Robot(int clientID, const char* name) :
     }
 
     for (int i = 0; i < handles_count; i++) {
-        _shapes.push_back( Shape( clientID, shapeNames.at(i).toStdString().data(), shapeHandles[i]) );
+        _shapes.push_back(new Shape( clientID, shapeNames.at(i).toStdString().data(), shapeHandles[i]) );
         _shapeNameHandler.insert(shapeNames.at(i), QPair<int, int>(shapeHandles[i], i));
         std::cerr << PrintColors::BOLDGREEN << "[ OK ] " << PrintColors::RESET << "Loaded shape " << shapeNames.at(i).toStdString() << "..\n";
     }
@@ -68,14 +64,17 @@ Robot::Robot(int clientID, const char* name) :
     while(getLHipPos(_lHipPos, simx_opmode_buffer) != simx_return_ok);
     while(getRLShoulderPos(_RLShoulderPos, simx_opmode_buffer) != simx_return_ok);
 
-    std::cout << "BodyLHip: " << _lHipPos[0] << " " << _lHipPos[1] << " " << _lHipPos[2] << "\n";
-    std::cout << "RLShoulder: " << _RLShoulderPos[0] << " " << _RLShoulderPos[1] << " " << _RLShoulderPos[2] << "\n";
+    QObject::connect(this, &Robot::_runSignal_, this, &Robot::_runSlot_);
 }
 
 Robot::~Robot() {
     getLHipPos(_lHipPos, simx_opmode_discontinue);
     getRLShoulderPos(_RLShoulderPos, simx_opmode_discontinue);
     simxGetObjectPosition(_clientID, _handle, -1, _initialPosition, simx_opmode_discontinue);
+
+    for(auto &s : _shapes) {
+        delete s;
+    }
 }
 
 simxInt Robot::getLHipPos(float *position, simxInt opMode) {
@@ -156,7 +155,7 @@ void Robot::reset() {
     }
 
     for ( auto &s : _shapes ) {
-        s.reset();
+        s->reset();
     }
 
     simxPauseCommunication(_clientID, 0);
@@ -165,6 +164,137 @@ void Robot::reset() {
         simxSynchronousTrigger(_clientID);
     }
 
+}
+
+void Robot::wait() {
+    _isRunning.lock();
+    _isRunning.unlock();
+}
+
+void Robot::results(result *r) {
+    r->score = _lastResult.score;
+    r->dx = _lastResult.dx;
+    r->dy = _lastResult.dy;
+    r->time = _lastResult.time;
+}
+
+void Robot::run(const float time_s) {
+    _isRunning.lock();
+
+    emit _runSignal_(time_s);
+}
+
+void Robot::_runSlot_(const float time_s) {
+    this->reset();
+
+    simxFloat position[3];
+    simxFloat oldPosition[3];
+
+    QList<simxFloat> maxDispBodyLHip;
+    QList<simxFloat> maxDispRLShoulder;
+    simxFloat tmpMaxDispBodyLHip[3];
+    simxFloat tmpMaxDispRLShoulder[3];
+
+    for(int i = 0; i < 3; i++) {
+       position[i] = _initialPosition[i];
+       oldPosition[i] = position[i];
+    }
+
+    maxDispBodyLHip.push_back(0);
+    maxDispRLShoulder.push_back(0);
+
+    simxFloat maxZ =_initialPosition[2];
+    float dx, dy, dist = 0, intgr = 0;
+
+    bool hasRobotFallen = false;
+    float num_ticks = time_s*1000/step_ms;
+    int ncycles;
+    for(ncycles = 0; ncycles < num_ticks && !hasRobotFallen; ncycles++) {
+        this->update();
+        simxGetObjectPosition(_clientID, _handle, -1, position, simx_opmode_buffer);
+
+        dx = position[0] - oldPosition[0];
+        dy = position[1] - oldPosition[1];
+        float dist_tmp = sqrt(pow(dx, 2) + pow(dy, 2));
+
+        if(dist_tmp > 0.1) {
+            oldPosition[0] = position[0];
+            oldPosition[1] = position[1];
+            oldPosition[2] = position[2];
+
+            dist += dist_tmp;
+        }
+
+        intgr += std::abs(position[1] - _initialPosition[1])*dx;
+
+        if (position[2] > maxZ) {
+            maxZ = position[2];
+        } else if (position[2] < maxZ - 0.05f) {
+            hasRobotFallen = true;
+        }
+
+        getLHipPos(tmpMaxDispBodyLHip, simx_opmode_buffer);
+        getRLShoulderPos(tmpMaxDispRLShoulder, simx_opmode_buffer);
+
+        float tmpDispBodyLHip = Utils::distanceXY(tmpMaxDispBodyLHip, _initialPosition);
+        float tmpDispRLShoulder = Utils::vsizeXZ(tmpMaxDispRLShoulder);
+
+//        if(tmpDispBodyLHip > maxDispBodyLHip.last()) {
+            maxDispBodyLHip.push_back(tmpDispBodyLHip);
+            if(maxDispBodyLHip.size() > 30) {
+                maxDispBodyLHip.removeFirst();
+            }
+//        }
+
+//        if(tmpDispRLShoulder > maxDispRLShoulder.last()) {
+            maxDispRLShoulder.push_back(tmpDispRLShoulder);
+            if(maxDispRLShoulder.size() > 30) {
+                maxDispRLShoulder.removeFirst();
+            }
+//        }
+    }
+
+    for (int j = 0; j < 5; j++) {
+        simxSynchronousTrigger(_clientID);
+    }
+
+    if(dist < 0.5f) {
+        dist = 0;
+    }
+
+    float dispBodyLHip = maxDispBodyLHip.first();
+    float dispRLShoulder = maxDispRLShoulder.first();
+
+    if(dispBodyLHip == 0) {
+        if(maxDispBodyLHip.size() >= 30) {
+            dispBodyLHip = maxDispBodyLHip.at(1);
+        } else if(ncycles < 200) {
+            dispBodyLHip = 100.0f; // infinity;
+        }
+    }
+
+    if(dispRLShoulder == 0) {
+        if(maxDispRLShoulder.size() >= 30) {
+            dispRLShoulder = maxDispRLShoulder.at(1);
+        } else if(ncycles < 200) {
+            dispRLShoulder = 100.0f; // infinity;
+        }
+    }
+
+    dx = position[0] - _initialPosition[0];
+    dy = position[1] - _initialPosition[1];
+    float time = ncycles*step_ms/1000.0f;
+    float avgvel = dist/time;
+
+    float fdx = fmax(dx, 0.0f);
+    float score = 50*fdx + (1-std::exp(-fdx/3))*(15*time + 50*std::exp(-dispBodyLHip/0.05) + 50*std::exp(-dispRLShoulder/0.05));
+
+    _lastResult.score = score;
+    _lastResult.dx = dx;
+    _lastResult.dy = dy;
+    _lastResult.time = time;
+
+    _isRunning.unlock();
 }
 
 result Robot::runExperiment( const std::vector<float> &genome, const float time_s, const std::string label) {
@@ -287,10 +417,6 @@ result Robot::runExperiment( const std::vector<float> &genome, const float time_
         }
     }
 
-    std::cout << "fdds : " << maxDispRLShoulder.size() << ", " << maxDispBodyLHip.size()  << "\n";
-    std::cout << "fdds : " << maxDispRLShoulder.first() << ", " << maxDispBodyLHip.first()  << "\n";
-    std::cout << "fdds : " << maxDispRLShoulder.last() << ", " << maxDispBodyLHip.last()  << "\n";
-
     dx = position[0] - _initialPosition[0];
     dy = position[1] - _initialPosition[1];
     float time = ncycles*step_ms/1000.0f;
@@ -319,7 +445,6 @@ result Robot::runExperiment( const std::vector<float> &genome, const float time_
 std::vector< std::pair<float, float> > Robot::getAleles() {
     std::vector< std::pair<float, float> > alleles;
 
-//    alleles.push_back( std::make_pair( 200.0, 600.0) ); // T(ms)
     alleles.push_back( std::make_pair( 200.0, 3000.0) ); // T(ms)
     if (_nao->_legHip->_enabled) {
         alleles.push_back( std::make_pair( -2.02, 2.02 ) ); //A: Pos Amplitude

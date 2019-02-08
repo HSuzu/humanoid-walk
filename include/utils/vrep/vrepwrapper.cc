@@ -1,95 +1,101 @@
 #include "vrepwrapper.hh"
 
-VRepWrapper *VRepWrapper::_vrep = nullptr;
+VRepWrapper *VRepWrapper::_wrapper = nullptr;
+int VRepWrapper::_uniquePort = VREP_STARTING_PORT;
+int VRepWrapper::_uniqueId = 0;
 
-VRepWrapper::VRepWrapper() {}
+VRepWrapper::VRepWrapper() : QObject() {
+}
+
+VRepWrapper *VRepWrapper::wrapper() {
+    if(_wrapper == nullptr) {
+        _wrapper = new VRepWrapper();
+    }
+
+    return _wrapper;
+}
 
 VRepWrapper::~VRepWrapper() {
-    for(int i = 0; i < _pids.size(); i++) {
-        killVRep(_pids.at(i));
+    QList<VRep *> vrep;
+    for(int i = 0; i < vrep.size(); i++) {
+        delete vrep.at(i);
+    }
+
+    QList<QThread *> thread;
+    for(int i = 0; i < thread.size(); i++) {
+        delete thread.at(i);
     }
 }
 
-void VRepWrapper::killVRep(pid_t pid) {
-    for(int j = 0; j < 2; j++) {
-        kill(pid, SIGINT);
-    }
-}
-
-VRepWrapper *VRepWrapper::vrep() {
-    if(_vrep == nullptr) {
-        _vrep = new VRepWrapper();
-    }
-
-    return _vrep;
-}
-
-int VRepWrapper::createInstance(int n, int waitRespTime, bool enableGUI) {
-    int cnt = 0;
-
-    for(int i = 0; i < n; i++) {
-        pid_t pid = fork();
-
-        int id = getId();
-        if(pid == 0) {
-            char remoteArg[50];
-            sprintf(remoteArg, VREP_REMOTEAPI_FORMAT_ARG, VREP_STARTING_PORT + id, VREP_REMOTEAPI_DEBUG, VREP_REMOTEAPI_PREENABLESYNC);
-
-            if(enableGUI) {
-                char *argv[] = {VREP_DEFAULT_CMD, remoteArg, VREP_SCENE, NULL};
-                execv(VREP_DEFAULT_CMD, argv);
-            } else {
-                char *argv[] = {VREP_DEFAULT_CMD, remoteArg, "-h", VREP_SCENE, NULL};
-                execv(VREP_DEFAULT_CMD, argv);
-            }
-        } else if (pid > 0) {
-            _pids.push_back(pid);
-
-            int clientID = simxStart("127.0.0.1", VREP_STARTING_PORT + id, true, true, waitRespTime, 5);
-            if(clientID >= 0) {
-                cnt++;
-
-                _availableInstances.push_back(clientID);
-
-                simxStartSimulation(clientID, simx_opmode_blocking);
-                _readyInstances.push_back(clientID);
-            } else {
-                killVRep(_pids.last());
-                _pids.removeLast();
-            }
-        } else { // An error occured
-            return cnt;
-        }
-    }
-
-    return cnt;
-}
-
-int VRepWrapper::numOfAvailableInstaces() {
-    return _availableInstances.size();
-}
-
-int VRepWrapper::numOfReadyInstances() {
-    return _readyInstances.size();
+int VRepWrapper::getPort() {
+    return _uniquePort++;
 }
 
 int VRepWrapper::getId() {
-    return  _cntr++;
+    return _uniqueId++;
 }
 
-int VRepWrapper::getInstance() {
-    if(_readyInstances.size() > 0) {
-        int id = _readyInstances.first();
-        _readyInstances.pop_front();
+int VRepWrapper::createInstance() {
+    int id = getId();
 
-        return id;
+    VRep *vrep = new VRep(id, getPort());
+    QThread *thread = new QThread();
+    vrep->moveToThread(thread);
+
+    QObject::connect(thread, &QThread::started, vrep, &VRep::start);
+    QObject::connect(vrep, &VRep::finished, thread, &QThread::quit);
+    QObject::connect(vrep, &VRep::finished, vrep, &VRep::deleteLater);
+    QObject::connect(thread, &QThread::finished, thread, &QThread::deleteLater);
+
+    QObject::connect(vrep, &VRep::started, this, &VRepWrapper::startedVRep);
+
+    _vrepInstances.insert(id, vrep);
+    _threads.insert(id, thread);
+
+    thread->start();
+}
+
+void VRepWrapper::errorVRep(int id, QString err) {
+    std::cout << err.toStdString() << "\n";
+
+    VRep *vrep = _vrepInstances.value(id);
+    QThread *thread = _threads.value(id);
+
+    if(vrep != 0 && thread != 0) {
+        QObject::disconnect(thread, &QThread::started, vrep, &VRep::start);
+        QObject::disconnect(vrep, &VRep::finished, thread, &QThread::quit);
+        QObject::disconnect(vrep, &VRep::finished, vrep, &VRep::deleteLater);
+        QObject::disconnect(thread, &QThread::finished, thread, &QThread::deleteLater);
+
+        QObject::disconnect(vrep, &VRep::error, this, &VRepWrapper::errorVRep);
+        QObject::disconnect(vrep, &VRep::started, this, &VRepWrapper::startedVRep);
     }
 
-    return -1;
+    if(vrep != 0) delete vrep;
+    if(thread != 0) _availableThreads.insert(id, thread);
 }
 
-int VRepWrapper::returnInstance(int clientID) {
-    _readyInstances.push_back(clientID);
+void VRepWrapper::startedVRep(int id) {
+    VRep *vrep = _vrepInstances.value(id);
+    if(vrep != 0) _availableInstaces.push_back(vrep);
+}
 
-    return 1;
+void VRepWrapper::clearUnusedThreads() {
+    QList<int> ids = _availableThreads.keys();
+    for(int i = 0; i < ids.size(); i++) {
+        _threads.remove(ids.at(i));
+
+        delete _availableThreads.value(ids.at(i));
+    }
+}
+
+VRep *VRepWrapper::getInstance() {
+    if(_availableInstaces.size() == 0) {
+        return nullptr;
+    }
+
+    VRep *vrep = _availableInstaces.first();
+    _availableInstaces.removeFirst();
+
+    return vrep;
 }

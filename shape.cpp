@@ -5,8 +5,10 @@
 
 int Shape::_n_untitle_shapes = 0;
 
-Shape::Shape(int clientID, const char* name, simxFloat (&position)[3],
-simxFloat (&orientation)[3]) :
+Shape::Shape(int clientID,
+             const char* name,
+             simxFloat (&position)[3],
+             simxFloat (&orientation)[3]) :
     VRepClass(clientID, name)
 {
     for (int i = 0; i < 3; i++) {

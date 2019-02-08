@@ -1,51 +1,51 @@
 #ifndef VREPWRAPPER_HH
 #define VREPWRAPPER_HH
 
-extern "C" {
-#include <signal.h>
-#include <unistd.h>
-#include <stdio.h>
-#include "extApi.h"
-}
+#include <QObject>
+#include <QThread>
+#include <QHash>
+#include <QString>
 
-#include <QList>
+#include <iostream>
 
-#define VREP_DEFAULT_CMD "vrep"
+#include "vrep.hh"
+
 #define VREP_STARTING_PORT 20000
-#define VREP_REMOTEAPI_FORMAT_ARG "-gREMOTEAPISERVERSERVICE_%d_%s_%s"
-#define VREP_REMOTEAPI_DEBUG "FALSE"
-#define VREP_REMOTEAPI_PREENABLESYNC "TRUE"
 #define VREP_SCENE "../NAO.ttt"
 
-class VRepWrapper {
+typedef int vrep_id;
+
+class VRepWrapper : public QObject {
+    Q_OBJECT
 private:
-    static VRepWrapper *_vrep;
+    static VRepWrapper *_wrapper;
     VRepWrapper();
 
 public:
-    static VRepWrapper *vrep();
+    VRepWrapper *wrapper();
 
+private:
+    static vrep_id _uniqueId;
+    static int _uniquePort;
+
+    QHash<int, VRep *> _vrepInstances;
+    QHash<int, QThread *> _threads;
+
+    QList<VRep *> _availableInstaces;
+    QHash<int, QThread *> _availableThreads;
+private:
+    static int getPort();
+    static int getId();
 public:
     ~VRepWrapper();
 
-private:
-    void killVRep(pid_t pid);
+    int createInstance();
+    void clearUnusedThreads();
 
-private:
-    QList<pid_t> _pids;
-    QList<int> _availableInstances;
-    QList<int> _readyInstances;
-
-    int _cntr = 0;
-    int getId();
-
-public:
-    int createInstance(int n = 1, int waitRespTime = 30000, bool enableGUI = true);
-    int numOfAvailableInstaces();
-    int numOfReadyInstances();
-
-    int getInstance();
-    int returnInstance(int clientID);
+    VRep *getInstance();
+public slots:
+    void errorVRep(int id, QString err);
+    void startedVRep(int id);
 };
 
 #endif // VREPWRAPPER_HH

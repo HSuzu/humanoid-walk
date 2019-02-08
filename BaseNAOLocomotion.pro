@@ -49,7 +49,8 @@ SOURCES += \
     include/utils/gnuplot/gnuplot.cc \
     test.cc \
     include/utils/utils.cc \
-    include/utils/vrep/vrepwrapper.cc
+    include/utils/vrep/vrepwrapper.cc \
+    include/utils/vrep/vrep.cc
 
 HEADERS += \
     include/_dirent.h \
@@ -77,4 +78,5 @@ HEADERS += \
     include/utils/printcolors.hpp \
     include/utils/gnuplot/gnuplot.hh \
     include/utils/utils.hh \
-    include/utils/vrep/vrepwrapper.hh
+    include/utils/vrep/vrepwrapper.hh \
+    include/utils/vrep/vrep.hh
