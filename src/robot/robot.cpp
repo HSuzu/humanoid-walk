@@ -12,12 +12,15 @@
 #include "helpers.hpp"
 #include "NAO.hpp"
 
+QMutex Robot::_shapeRequestMutex;
 
 Robot::Robot(int clientID, const char* name) : VRepClass(clientID, name) {
     int handles_count = 0;
     int names_count = 0;
     simxInt *shapeHandles_tmp;
     simxChar *shapeNames_tmp;
+
+    _shapeRequestMutex.lock();
 
     simxGetObjectGroupData(clientID, sim_object_shape_type, 0, &handles_count, &shapeHandles_tmp, NULL, NULL, NULL, NULL, &names_count, &shapeNames_tmp, simx_opmode_blocking);
 
@@ -40,6 +43,8 @@ Robot::Robot(int clientID, const char* name) : VRepClass(clientID, name) {
             }
         }
     }
+
+    _shapeRequestMutex.unlock();
 
     for (int i = 0; i < handles_count; i++) {
         _shapes.push_back(new Shape( clientID, shapeNames.at(i).toStdString().data(), shapeHandles[i]) );

@@ -18,12 +18,14 @@ VRepWrapper *VRepWrapper::wrapper() {
 VRepWrapper::~VRepWrapper() {
     QList<VRep *> vrep = _vrepInstances.values();
     for(int i = 0; i < vrep.size(); i++) {
-        delete vrep.at(i);
+        if(vrep.at(i))
+            delete vrep.at(i);
     }
 
     QList<QThread *> thread = _threads.values();
     for(int i = 0; i < thread.size(); i++) {
-        delete thread.at(i);
+        if(thread.at(i))
+            delete thread.at(i);
     }
 }
 
@@ -38,14 +40,10 @@ int VRepWrapper::getId() {
 int VRepWrapper::createInstance() {
     int id = getId();
 
-//    char cwd[500];
-//    if(getcwd(cwd, sizeof(cwd)) == NULL) {
-//        std::cout << "[Error/VRepWrapper] Fail to fetch current directory: " << strerror(errno) << "\n";
-//    }
-
     QThread *thread = new QThread();
     VRep *vrep = new VRep(id, getPort());
-    vrep->setScene(QString::fromLatin1(VREP_SCENE));
+    _defaultScene = QString::fromLatin1(VREP_SCENE);
+    vrep->setScene(_defaultScene);
     vrep->moveToThread(thread);
 
     QObject::connect(thread, &QThread::started, vrep, &VRep::start);
@@ -61,6 +59,8 @@ int VRepWrapper::createInstance() {
     _threads.insert(id, thread);
 
     thread->start();
+
+    return 0;
 }
 
 void VRepWrapper::errorVRep(int id, QString err) {

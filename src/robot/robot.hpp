@@ -24,6 +24,8 @@ struct result{
 class Robot : public VRepClass {
     Q_OBJECT
 private:
+    static QMutex _shapeRequestMutex;
+private:
     NAO *_nao;
 
     std::vector<JointInterface *> _joints;

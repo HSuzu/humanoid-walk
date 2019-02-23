@@ -5,7 +5,10 @@
 
 #include <QObject>
 #include <QList>
-#include <ctime>
+
+extern "C" {
+#include <stdlib.h>
+}
 
 #include <utils/vrep/vrepwrapper.hh>
 #include <utils/vrep/vrep.hh>

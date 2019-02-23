@@ -28,6 +28,8 @@ private:
     static vrep_id _uniqueId;
     static int _uniquePort;
 
+    QString _defaultScene;
+
     QHash<int, VRep *> _vrepInstances;
     QHash<int, QThread *> _threads;
 

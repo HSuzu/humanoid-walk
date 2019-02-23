@@ -3,20 +3,22 @@
 #define INSTANTIATE_REAL_GENOME
 #include <ga/GARealGenome.h>
 
+QThread *SimulationWrapper::_vrepThread = nullptr;
 VRepWrapper *SimulationWrapper::_vrepWrapper = nullptr;
 
 SimulationWrapper::SimulationWrapper(int nInstances, QObject *parent) : QObject(parent) {
     _seed = time(NULL);
 
-    QThread *thread = new QThread();
+    _vrepThread = new QThread();
     _vrepWrapper = VRepWrapper::wrapper();
-    _vrepWrapper->moveToThread(thread);
-    QObject::connect(thread, &QThread::finished, thread, &QThread::deleteLater);
-    thread->start();
+    _vrepWrapper->moveToThread(_vrepThread);
+    QObject::connect(_vrepThread, &QThread::finished, _vrepThread, &QThread::deleteLater);
 
     for(int i = 0; i < nInstances; i++) {
         _vrepWrapper->createInstance();
     }
+
+    _vrepThread->start();
 }
 
 void SimulationWrapper::populationEvaluator(GAPopulation &p) {
@@ -33,6 +35,7 @@ void SimulationWrapper::populationEvaluator(GAPopulation &p) {
 
             idx++;
         } else {
+            bool ret = false;
             QMutableListIterator<VRep *> it(v);
             while(it.hasNext()) {
                 VRep *inst = it.next();
@@ -41,10 +44,13 @@ void SimulationWrapper::populationEvaluator(GAPopulation &p) {
                     _vrepWrapper->returnInstance(inst);
 
                     it.remove();
+                    ret = true;
                 }
             }
 
-
+            if(ret == false) {
+                sleep(0.1);
+            }
         }
     }
 

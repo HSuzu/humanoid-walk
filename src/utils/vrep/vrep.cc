@@ -2,7 +2,7 @@
 #include <ga/GARealGenome.h>
 
 
-VRep::VRep(int id, int port, QObject *parent) : QObject (parent) {
+VRep::VRep(int id, int port, QObject *parent) : QObject (parent), _scene() {
     _id = id;
 
     _pid = -1;
@@ -146,7 +146,7 @@ void VRep::start() {
 
         sprintf(remoteArg, VREP_REMOTEAPI_FORMAT_ARG, remoteAPIPort(), remoteDebug, remoteSync);
 
-        char *argv[] = {VREP_DEFAULT_CMD, remoteArg, _scene.toUtf8().data(), NULL};
+        char *argv[] = {VREP_DEFAULT_CMD, remoteArg, _scene.toLatin1().data(), "-h", NULL};
         if(execv(VREP_DEFAULT_CMD, argv) < 0) {
             printf("Fail.\n");
             printf("%s\n", strerror(errno));
@@ -166,22 +166,21 @@ void VRep::start() {
         getline(&status, &n, readFile);
 
         if(strncmp(status, "Fail.\n", n) == 0) {
+            free(status);
+            status = NULL;
+
             getline(&status, &n, readFile);
             emit error(_id, QString::fromUtf8("[ERROR/VRep] Fail to exec VREP. %1\n").arg(status));
             free(status);
+            status = NULL;
 
             emit finished();
             return;
 
         }
 
-//        else {
-//            while(1) {
-//                getline(&status, &n, readFile);
-//                emit error(_id, QString::fromUtf8(status));
-//            }
-//        }
-        free(status);
+        if(status != NULL);
+            free(status);
 
         int i = 0;
         while(_clientID == -1 && i++ < 5) {

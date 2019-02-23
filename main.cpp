@@ -1,13 +1,13 @@
 #include <QCoreApplication>
+#include <iostream>
 
 #include <simulationwrapper.hh>
 
 int main(int argc, char *argv[]) {
     QCoreApplication a(argc, argv);
 
-    SimulationWrapper sw(2);
+    SimulationWrapper sw(4, &a);
     sw.run();
 
-    return 0;
-//    return a.exec();
+    return a.exec();
 }
